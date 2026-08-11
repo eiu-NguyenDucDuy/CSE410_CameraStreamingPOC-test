@@ -23,9 +23,14 @@ export function useScreenShare() {
       screenStream.getVideoTracks()[0].addEventListener("ended", () => {
         stopScreenShare();
       });
-    } catch (err) {
-      console.error(err);
-      setError("Cannot access screen sharing.");
+    } catch (err: any) {
+      if (err.name === "NotAllowedError") {
+        console.log("User cancelled screen sharing dialog.");
+        setError(null);
+      } else {
+        console.error("Screen share error:", err);
+        setError("Cannot access screen sharing.");
+      }
     }
   };
 

@@ -1,9 +1,30 @@
 "use client";
 
 import { useCamera } from "@/hooks/useCamera";
+import { useEffect } from "react";
 
-export default function CameraPreview() {
-  const { videoRef, error, stream, startCamera, stopCamera } = useCamera();
+interface Props {
+  stream?: MediaStream | null;
+  startCamera?: () => void;
+  stopCamera?: () => void;
+  error?: string | null;
+  videoRef?: React.RefObject<HTMLVideoElement | null>;
+}
+
+export default function CameraPreview(props: Props) {
+  const internalHook = useCamera();
+
+  const stream = props.stream !== undefined ? props.stream : internalHook.stream;
+  const startCamera = props.startCamera || internalHook.startCamera;
+  const stopCamera = props.stopCamera || internalHook.stopCamera;
+  const error = props.error !== undefined ? props.error : internalHook.error;
+  const videoRef = props.videoRef || internalHook.videoRef;
+
+  useEffect(() => {
+    if (videoRef && videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream, videoRef]);
 
   return (
     <div className="rounded-xl bg-white p-4 shadow">
