@@ -26,12 +26,8 @@ export default function ExamineePage() {
   screenStreamRef.current = screenHook.stream;
 
   useEffect(() => {
-    // Load or create student ID
-    let sid = localStorage.getItem("examinee_id");
-    if (!sid) {
-      sid = "SV" + Math.floor(100 + Math.random() * 900);
-      localStorage.setItem("examinee_id", sid);
-    }
+    // Generate a unique examinee ID for each tab to ensure multiple tabs show up as separate online candidates
+    const sid = "SV" + Math.floor(1000 + Math.random() * 9000);
     setStudentId(sid);
 
     // Connect to WebSocket Signaling Server
@@ -69,14 +65,24 @@ export default function ExamineePage() {
         );
 
         const targetStream = streamType === "camera" ? cameraStreamRef.current : screenStreamRef.current;
-        if (targetStream) {
-          targetStream.getTracks().forEach((track) => peer.addTrack(track, targetStream));
-        }
 
         try {
+          if (targetStream) {
+            targetStream.getTracks().forEach((track) => peer.addTrack(track, targetStream));
+          }
+
           await peer.setRemoteDescription(new RTCSessionDescription(offer));
+
+          peer.getTransceivers().forEach((transceiver) => {
+            if (targetStream && targetStream.getTracks().length > 0) {
+              transceiver.direction = "sendonly";
+            }
+          });
+
           const answer = await peer.createAnswer();
           await peer.setLocalDescription(answer);
+
+          await webrtcService.processIceQueue(peerKey);
 
           signalingService.send({
             type: "signal-answer",
@@ -90,13 +96,8 @@ export default function ExamineePage() {
       } else if (msg.type === "signal-ice") {
         const { senderSocketId, streamType, candidate } = msg;
         const peerKey = `${senderSocketId}-${streamType}`;
-        const peer = webrtcService.getPeer(peerKey);
-        if (peer && candidate) {
-          try {
-            await peer.addIceCandidate(new RTCIceCandidate(candidate));
-          } catch (err) {
-            console.error("Error adding ICE candidate:", err);
-          }
+        if (candidate) {
+          await webrtcService.addIceCandidate(peerKey, candidate);
         }
       } else if (msg.type === "receive-warning") {
         if (msg.message) {

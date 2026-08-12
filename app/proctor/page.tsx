@@ -80,6 +80,7 @@ export default function ProctorPage() {
         if (peer && answer) {
           try {
             await peer.setRemoteDescription(new RTCSessionDescription(answer));
+            await webrtcService.processIceQueue(peerKey);
           } catch (err) {
             console.error("Error setting remote answer:", err);
           }
@@ -87,13 +88,8 @@ export default function ProctorPage() {
       } else if (msg.type === "signal-ice") {
         const { senderSocketId, streamType, candidate } = msg;
         const peerKey = `${senderSocketId}-${streamType}`;
-        const peer = webrtcService.getPeer(peerKey);
-        if (peer && candidate) {
-          try {
-            await peer.addIceCandidate(new RTCIceCandidate(candidate));
-          } catch (err) {
-            console.error("Error adding remote ICE:", err);
-          }
+        if (candidate) {
+          await webrtcService.addIceCandidate(peerKey, candidate);
         }
       }
     });
@@ -112,6 +108,10 @@ export default function ProctorPage() {
       return;
     }
 
+    // Reset streams when switching or updating candidate
+    setCameraStream(null);
+    setScreenStream(null);
+
     const socketId = selectedCandidate.socketId;
 
     // Connect Camera Stream if enabled
@@ -128,6 +128,7 @@ export default function ProctorPage() {
           });
         },
         (remoteStream) => {
+          console.log("[Proctor] Camera remoteStream received for socket:", socketId);
           setCameraStream(remoteStream);
         }
       );
@@ -148,7 +149,6 @@ export default function ProctorPage() {
         .catch((err) => console.error("Error creating camera offer:", err));
     } else {
       webrtcService.closePeer(`${socketId}-camera`);
-      setCameraStream(null);
     }
 
     // Connect Screen Stream if enabled
@@ -165,6 +165,7 @@ export default function ProctorPage() {
           });
         },
         (remoteStream) => {
+          console.log("[Proctor] Screen remoteStream received for socket:", socketId);
           setScreenStream(remoteStream);
         }
       );
@@ -185,7 +186,6 @@ export default function ProctorPage() {
         .catch((err) => console.error("Error creating screen offer:", err));
     } else {
       webrtcService.closePeer(`${socketId}-screen`);
-      setScreenStream(null);
     }
   }, [selectedCandidate?.socketId, selectedCandidate?.cameraEnabled, selectedCandidate?.screenSharing]);
 

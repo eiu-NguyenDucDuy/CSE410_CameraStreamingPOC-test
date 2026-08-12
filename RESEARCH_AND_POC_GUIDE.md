@@ -8,7 +8,7 @@
 Theo tài liệu yêu cầu `(INCIT) MÔ TẢ YÊU CẦU - PHẤN MỀM TỔ CHỨC & THI ONLINE.pdf` (Mục 29: Giám sát thi trực tiếp), lập trình viên Backend (phụ trách Spring Boot `incit_backend`) cần thiết kế và xây dựng giải pháp máy chủ phục vụ tính năng **xem camera và màn hình của thí sinh theo thời gian thực (real-time)**.
 
 ### Yêu cầu vai trò Backend:
-1. **Phát triển WebRTC Signaling Server bằng Spring Boot (Java 17/21)**.
+1. **Phát triển WebRTC Signaling Server bằng Spring Boot (Java 21 LTS)**.
 2. **Quản lý danh sách thí sinh live và phiên giám sát (Live Proctoring Sessions)**.
 3. **Cung cấp REST API kiểm tra sức khỏe hệ thống, lấy danh sách thí sinh đang thi và phát cảnh báo**.
 4. **Xây dựng kiến trúc mở rộng hỗ trợ tích hợp WebRTC SFU Server trong giai đoạn Production**.

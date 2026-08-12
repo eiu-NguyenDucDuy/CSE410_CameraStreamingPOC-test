@@ -28,7 +28,7 @@ export class SignalingService {
     };
 
     this.socket.onerror = (err) => {
-      console.error("[Signaling] WebSocket Error:", err);
+      console.error("[Signaling] WebSocket Error: Không thể kết nối tới Spring Boot Server (ws://localhost:8080/ws/signaling). Vui lòng kiểm tra lại xem backend đã được chạy chưa.", err);
     };
 
     this.socket.onclose = () => {
