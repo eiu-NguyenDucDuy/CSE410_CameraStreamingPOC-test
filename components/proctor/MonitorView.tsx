@@ -1,59 +1,179 @@
-"use client";
+'use client'
 
-import VideoPlayer from "@/components/common/VideoPlayer";
-import { Candidate } from "@/types/candidate";
+import VideoPlayer from '@/components/common/VideoPlayer'
+import { Candidate } from '@/types/candidate'
 
-interface Props {
-  candidate?: Candidate;
-  cameraStream?: MediaStream | null;
-  screenStream?: MediaStream | null;
+export type MonitorLayout = 'focus' | 'grid' | 'main-list'
+
+interface StreamMap {
+  [candidateId: string]: MediaStream | null | undefined
 }
 
-export default function MonitorView({ candidate, cameraStream, screenStream }: Props) {
-  if (!candidate) {
-    return <div className="aspect-video flex items-center justify-center bg-gray-300 rounded-xl">Select a candidate to monitor</div>;
-  }
+interface Props {
+  candidates: Candidate[]
+  selectedId: string
+  onSelect: (id: string) => void
+  cameraStreams: StreamMap
+  screenStreams: StreamMap
+  layout: MonitorLayout
+}
+
+function StatusBadge({ active, children }: { active: boolean; children: React.ReactNode }) {
+  return <span className={`rounded-md px-2 py-1 text-[11px] font-medium ${active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/10 text-slate-400'}`}>{children}</span>
+}
+
+function VideoEmpty({ message }: { message: string }) {
+  return <div className="flex h-full w-full items-center justify-center bg-slate-950 text-center text-xs text-slate-500">{message}</div>
+}
+
+function CandidateVideo({
+  candidate,
+  screenStream,
+  cameraStream,
+  large = false,
+  onClick,
+}: {
+  candidate: Candidate
+  screenStream?: MediaStream | null
+  cameraStream?: MediaStream | null
+  large?: boolean
+  onClick?: () => void
+}) {
+  const isDisconnected = candidate.status === 'disconnected'
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold">{candidate.name} ({candidate.id || candidate.studentId})</h2>
-          <span className="text-sm text-gray-500">Status: {candidate.status}</span>
-        </div>
-        <div className="flex gap-2">
-          <span className={`px-2 py-1 rounded text-xs text-white ${candidate.cameraEnabled ? "bg-emerald-600" : "bg-gray-400"}`}>
-            Camera: {candidate.cameraEnabled ? "ON" : "OFF"}
-          </span>
-          <span className={`px-2 py-1 rounded text-xs text-white ${candidate.screenSharing ? "bg-emerald-600" : "bg-gray-400"}`}>
-            Screen: {candidate.screenSharing ? "ON" : "OFF"}
-          </span>
+    <div
+      onClick={onClick}
+      className={`
+        group relative w-full overflow-hidden rounded-xl border bg-slate-950
+        ${onClick ? 'cursor-pointer hover:border-blue-500' : ''}
+        ${large ? 'border-slate-700' : 'border-slate-800'}
+      `}
+    >
+      {/* Screen */}
+      <div className="relative aspect-video w-full bg-black">
+        {isDisconnected ? (
+          <VideoEmpty message="Candidate disconnected" />
+        ) : screenStream ? (
+          <VideoPlayer stream={screenStream} objectFit="contain" />
+        ) : (
+          <VideoEmpty message={candidate.screenSharing ? 'Connecting screen...' : 'Screen not shared'} />
+        )}
+      </div>
+
+      {/* Camera overlay */}
+      <div
+        className={`
+          absolute right-3 top-3 overflow-hidden rounded-lg
+          border border-white/20 bg-black shadow-xl
+          ${large ? 'h-24 w-36 md:h-28 md:w-44' : 'h-14 w-20'}
+        `}
+      >
+        {cameraStream ? (
+          <VideoPlayer stream={cameraStream} objectFit="cover" />
+        ) : (
+          <div className="flex h-full items-center justify-center text-[10px] text-slate-500">{candidate.cameraEnabled ? 'Connecting...' : 'Camera off'}</div>
+        )}
+      </div>
+
+      {/* Candidate information */}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-3 pb-3 pt-10">
+        <div className="flex items-end justify-between gap-2">
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold text-white">{candidate.name}</div>
+            <div className="text-[10px] text-slate-400">{candidate.studentId || candidate.id}</div>
+          </div>
+
+          <div className="flex gap-1">
+            <StatusBadge active={candidate.cameraEnabled}>📷</StatusBadge>
+            <StatusBadge active={candidate.screenSharing}>🖥</StatusBadge>
+          </div>
         </div>
       </div>
 
-      <div className="relative rounded-xl overflow-hidden bg-slate-900 border">
-        {/* Remote screen */}
-        <div className="aspect-video w-full flex items-center justify-center">
-          {screenStream ? (
-            <VideoPlayer stream={screenStream} objectFit="contain" />
-          ) : (
-            <div className="flex h-full items-center justify-center text-slate-400 text-sm">
-              {candidate.screenSharing ? "📡 Connecting screen stream..." : "🖥️ Candidate is not sharing screen"}
-            </div>
-          )}
-        </div>
+      {/* Selected indicator */}
+      {onClick && <div className="pointer-events-none absolute inset-0 rounded-xl ring-0 transition-all group-hover:ring-2 group-hover:ring-blue-500/60" />}
+    </div>
+  )
+}
 
-        {/* Remote camera overlay */}
-        <div className="absolute right-4 top-4 h-44 w-60 overflow-hidden rounded-lg bg-black border-2 border-slate-700 shadow-xl">
-          {cameraStream ? (
-            <VideoPlayer stream={cameraStream} objectFit="cover" />
-          ) : (
-            <div className="flex h-full items-center justify-center text-slate-400 text-xs text-center p-2">
-              {candidate.cameraEnabled ? "📡 Connecting camera stream..." : "📷 Camera turned off"}
-            </div>
-          )}
+export default function MonitorView({ candidates, selectedId, onSelect, cameraStreams, screenStreams, layout }: Props) {
+  if (candidates.length === 0) {
+    return (
+      <div className="flex min-h-[500px] items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-950">
+        <div className="text-center">
+          <div className="text-4xl">🖥</div>
+          <div className="mt-3 text-sm font-medium text-slate-300">Waiting for examinees</div>
+          <div className="mt-1 text-xs text-slate-500">Connected examinees will appear here.</div>
         </div>
+      </div>
+    )
+  }
+
+  const selected = candidates.find((candidate) => candidate.id === selectedId) || candidates[0]
+
+  if (!selected) return null
+
+  const others = candidates.filter((candidate) => candidate.id !== selected.id)
+
+  /* -----------------------------------------------------------
+     FOCUS
+     Main candidate + small thumbnails below
+  ----------------------------------------------------------- */
+
+  if (layout === 'focus') {
+    return (
+      <div className="space-y-3">
+        <CandidateVideo candidate={selected} screenStream={screenStreams[selected.id]} cameraStream={cameraStreams[selected.id]} large />
+
+        {others.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
+            {others.map((candidate) => (
+              <CandidateVideo key={candidate.id} candidate={candidate} screenStream={screenStreams[candidate.id]} cameraStream={cameraStreams[candidate.id]} onClick={() => onSelect(candidate.id)} />
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  /* -----------------------------------------------------------
+     GRID
+     All candidates equal size
+  ----------------------------------------------------------- */
+
+  if (layout === 'grid') {
+    return (
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {candidates.map((candidate) => (
+          <CandidateVideo key={candidate.id} candidate={candidate} screenStream={screenStreams[candidate.id]} cameraStream={cameraStreams[candidate.id]} onClick={() => onSelect(candidate.id)} />
+        ))}
+      </div>
+    )
+  }
+
+  /* -----------------------------------------------------------
+     MAIN + LIST
+     Main candidate on left, other candidates on right
+  ----------------------------------------------------------- */
+
+  return (
+    <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
+      {/* Main candidate */}
+      <div className="min-w-0">
+        <CandidateVideo candidate={selected} screenStream={screenStreams[selected.id]} cameraStream={cameraStreams[selected.id]} large />
+      </div>
+
+      {/* Other candidates */}
+      <div className="min-w-0 space-y-3">
+        {others.length === 0 ? (
+          <div className="flex min-h-32 items-center justify-center rounded-xl border border-dashed border-slate-700 text-xs text-slate-500">No other candidates</div>
+        ) : (
+          others.map((candidate) => (
+            <CandidateVideo key={candidate.id} candidate={candidate} screenStream={screenStreams[candidate.id]} cameraStream={cameraStreams[candidate.id]} onClick={() => onSelect(candidate.id)} />
+          ))
+        )}
       </div>
     </div>
-  );
+  )
 }
