@@ -5,9 +5,10 @@ import { useEffect, useRef } from "react";
 interface Props {
   stream?: MediaStream | null;
   className?: string;
+  objectFit?: "cover" | "contain";
 }
 
-export default function VideoPlayer({ stream, className = "" }: Props) {
+export default function VideoPlayer({ stream, className = "", objectFit = "cover" }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
@@ -16,5 +17,7 @@ export default function VideoPlayer({ stream, className = "" }: Props) {
     }
   }, [stream]);
 
-  return <video ref={videoRef} autoPlay playsInline muted className={`h-full w-full object-cover ${className}`} />;
+  const fitClass = objectFit === "contain" ? "object-contain" : "object-cover";
+
+  return <video ref={videoRef} autoPlay playsInline muted className={`h-full w-full ${fitClass} ${className}`} />;
 }
